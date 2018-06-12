@@ -39,7 +39,7 @@ app.get('/mine', (req, res) => {
 
   const newBlock = coin.createNewBlock(nonce, previousBlockHash, blockHash);
   res.json({
-    note: "New block mined succesully",
+    note: "New block mined successfully",
     block: newBlock
   });
 });
