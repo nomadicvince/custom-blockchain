@@ -2,11 +2,11 @@ const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 const Blockchain = require('./blockchain');
-const uuid = ('uuid/v1');
+const uuid = require('uuid/v1');
 const port = process.argv[2];
 const rp = require('request-promise');
 
-const nodeAddress = uuid.split('-').join('');
+const nodeAddress = uuid().split('-').join('');
 
 const coin = new Blockchain();
 
@@ -20,8 +20,34 @@ app.get('/blockchain', (req, res) => {
 });
 
 app.post('/transaction', (req, res) => {
-  const blockIndex = coin.createNewTransaction(req.body.amount, req.body.sender, req.body.recipient);
-  res.json({note: `Transaction will be added in block ${blockIndex}.`});
+  const newTransaction = req.body;
+  const blockIndex = coin.addTransactionToPendingTransactions(newTransaction);
+  res.json({ note: `Transaction will be added in block ${blockIndex}`}); 
+});
+
+app.post('/transaction/broadcast', (req, res) => {
+  const newTransaction = coin.createNewTransaction(req.body.amount, req.body.sender, req.body.recipient);
+  coin.addTransactionToPendingTransactions(newTransaction);
+
+  const requestPromises = [];
+  coin.networkNodes.forEach(networkNodeURL => {
+    const requestOptions = {
+      uri: networkNodeURL + "/transaction",
+      method: 'POST',
+      body: newTransaction,
+      json: true
+    };
+
+    requestPromises.push(rp(requestOptions));
+  });
+
+  Promise.all(requestPromises)
+    .then(data => {
+      res.json({ note: "Broadcast was successful."});
+    })
+    .catch(error => {
+      console.error('/transaction/broadcast Promise error ' + error);
+    })
 });
 
 app.get('/mine', (req, res) => {
@@ -38,8 +64,20 @@ app.get('/mine', (req, res) => {
   coin.createNewTransaction(12.5, "00", nodeAddress);
 
   const newBlock = coin.createNewBlock(nonce, previousBlockHash, blockHash);
+
+  coin.networkNodes.forEach(networkNodeURL => {
+    const requestOptions = {
+      uri: networkNodeURL + '/receive-new-block',
+      method: 'POST',
+      body: { 
+        newBlock: newBlock
+      },
+      json: true
+    }
+  })
+
   res.json({
-    note: "New block mined successfully",
+    note: "New block mined succesully",
     block: newBlock
   });
 });
