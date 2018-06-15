@@ -72,6 +72,57 @@ class Blockchain {
     return nonce;
   }
 
+  //Consensus algorithm
+  chainIsValid(blockchain) {
+       // check blocks, except for the genesis block
+       for(let i = 1; i < blockchain.length; i++) {
+        const currentBlock = blockchain[i];
+        const prevBlock = blockchain[i - 1];
+        const blockHash = this.hashBlock(
+            prevBlock['hash'], 
+            {
+                transactions: currentBlock['transactions'], 
+                index: currentBlock['index']
+            }, 
+            currentBlock['nonce']
+        );
+        /*console.log("prevBlock[hash]: " + blockHash + 
+        ", transactions: " + currentBlock['transactions'] + 
+        ", index: " + currentBlock['index'] + 
+        ", currentBlock[nonce]: " + currentBlock['nonce'] );*/
+
+        // NOTE: '0000' should probably be a constant
+        // we check if the hash begins with four zeroes
+        if(blockHash.substring(0,4) !== '0000') {
+            //validChain = false;
+            // console.log("0000 not found in blockHash!" );
+            //return validChain;
+            return false;
+        }
+
+        // check if the current node points to the correct previous hash for the previous node
+        if(currentBlock['previousBlockHash'] !== prevBlock['hash']){ // if chain is not valid
+            //validChain = false;
+            // console.log("previous block hash is not the same as the one stored on the current hash\'s previousBlockHash!" );
+            //return validChain;
+            return false;
+        }
+    }
+
+    // check genesis block
+    const genesisBlock = blockchain[0]
+    const correctNonce = genesisBlock['nonce'] === 100;
+    const correctPreviousBlockHash = genesisBlock['previousBlockHash'] === '0';
+    const correctHash = genesisBlock['hash'] === '0';
+    const correctTransactions = genesisBlock['transactions'].length === 0;
+
+    if(!(correctNonce && correctPreviousBlockHash && correctHash && correctTransactions)){
+        return false
+    }
+    
+    return true;
+  }
+
 }
 
 module.exports = Blockchain;

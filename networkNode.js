@@ -80,7 +80,7 @@ app.get('/mine', (req, res) => {
   Promise.all(requestPromises)
   .then(data => {
     const requestOptions = {
-      uri: coin.currentNodeURL + '/broadcast/transaction',
+      uri: coin.currentNodeURL + '/transaction/broadcast',
       method: 'POST',
       body: {
         amount: 12.5,
@@ -192,6 +192,52 @@ app.post('/register-nodes-bulk',(req, res) => {
     }
   });
   res.json({ note: "Bulk registration successful." });
+});
+
+app.get('/consensus', (req, res) => {
+  const requestPromises = [];
+  coin.networkNodes.forEach(networkNodeURL => {
+    const requestOptions = {
+      uri: networkNodeURL + '/blockchain',
+      method: 'GET',
+      json: true
+    };
+
+    requestPromises.push(rp(requestOptions));
+  })
+
+  Promise.all(requestPromises)
+  .then(blockchains => {
+    const currentChainLength = coin.chain.length;
+    let maxChainLength = currentChainLength;
+    let newLongestChain = null;
+    let newPendingTransactions = null;
+
+    blockchains.forEach(blockchain => {
+      if(blockchain.chain.length > maxChainLength) {
+        maxChainLength = blockchain.chain.length;
+        newLongestChain = blockchain.chain;
+        newPendingTransactions = blockchain.pendingTransactions;
+      };
+    });
+
+    if(!newLongestChain || newLongestChain && !coin.chainIsValid(newLongestChain)) {
+      res.json({
+        note: "Current chain has not bee replaced",
+        chain: coin.chain
+      });
+    } else {
+      coin.chain = newLongestChain;
+      coin.pendingTransactions = newPendingTransactions;
+      res.json({
+        note: "This chain has been replaced",
+        chain: coin.chain
+      });
+    }
+  })
+  .catch(error => {
+    console.error('/consensus Promise error ' + error);
+  })
 });
 
 app.listen(port, () => {
