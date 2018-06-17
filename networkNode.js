@@ -5,6 +5,7 @@ const Blockchain = require('./blockchain');
 const uuid = require('uuid/v1');
 const port = process.argv[2];
 const rp = require('request-promise');
+const assert = require('assert');
 
 const nodeAddress = uuid().split('-').join('');
 
@@ -238,6 +239,37 @@ app.get('/consensus', (req, res) => {
   .catch(error => {
     console.error('/consensus Promise error ' + error);
   })
+});
+
+
+app.get('/block/:blockHash', (req, res) => { 
+  const blockHash = req.params.blockHash;
+  const correctBlock = coin.getBlock(blockHash);
+  res.json({
+    block: correctBlock
+  });
+});
+
+
+app.get('/transaction/:transactionId', (req, res) => {
+  const transactionId = req.params.transactionId;
+  const transactionData = coin.getTransaction(transactionId);
+  res.json({
+    "transaction": transactionData.transaction,
+    "block": transactionData.block
+  });
+});
+
+app.get('/address/:address', (req, res) => {
+  const address = req.params.address;
+  const addressData = coin.getAddressData(address);
+  res.json({
+    addressData: addressData
+  });
+});
+
+app.get('/explorer', (req, res) => {
+  res.sendFile('./explorer/index.html', { root: __dirname});
 });
 
 app.listen(port, () => {
